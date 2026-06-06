@@ -1,0 +1,315 @@
+#!/bin/bash
+
+# Script name
+name="dumptr"
+
+# Function for help manual
+help() {
+echo "
+Encode / Decode / Hash Utility
+
+USAGE:
+  ./$name -i \"input\" -e| -d| -h mode
+  ./$name -f file     -e| -d| -h mode
+
+OPTIONS:
+  -i   Direct input string
+  -f   Input from file
+  -e   Encode mode
+  -d   Decode mode
+  -h   Hash mode
+
+DECODE MODES:
+  bin   Binary -> ASCII
+  hex   Hex -> ASCII
+  b32   Base32 -> ASCII
+  b64   Base64 -> ASCII
+  b58   Base58 -> ASCII
+  all   Try all decode methods
+
+ENCODE MODES:
+  bin   ASCII -> Binary
+  hex   ASCII -> Hex
+  b32   ASCII -> Base32
+  b64   ASCII -> Base64
+  b58   ASCII -> Base58
+  all   Encode in all formats
+
+HASH MODES:
+  md5   MD5
+  sha1  SHA1
+  s224  SHA224
+  s256  SHA256
+  s384  SHA384
+  s512  SHA512
+  all   All hashes
+
+EXAMPLES:
+  ./$name -i \"hello\" -e b64
+  ./$name -i \"01101000\" -d bin
+  ./$name -i \"hello\" -h sha256
+"
+}
+
+# Function for decoding binary
+function bin_to_ascii(){
+	echo -n "  [*] Binary:"
+	if [[ ${#1} -eq $(echo -n $1 | tr -cd '10') ]];then
+	printf '%b\n' "$(echo -n "$1" | perl -lane 'print map { chr oct("0b$_") } @F')"
+	fi
+	echo
+}
+# Function for decoding hex
+function hex_to_ascii(){
+	echo -n "  [*] Hex:"
+	echo -n "$1" | xxd -r -p | tr -cd '\11\12\15\40-\176'
+	echo
+}
+# Function for decoding base32
+function b32_to_ascii(){
+	echo -n "  [*] Base32:	"
+	echo -n "$1" | base32 -d 2>/dev/null | tr -cd '\11\12\15\40-\176'
+	echo
+}
+# Function for decoding base64
+function b64_to_ascii(){
+	echo -n "  [*] Base64:	"
+	echo -n "$1" | base64 -d 2>/dev/null | tr -cd '\11\12\15\40-\176'
+	echo
+}
+# Function for decoding base58
+function b58_to_ascii(){
+	echo -n "  [*] Base58:	"
+	echo -n "$1" | base58 -d 2>/dev/null | tr -cd '\11\12\15\40-\176'
+	echo
+}
+# Function for encoding to binary
+function ascii_to_bin(){
+	echo -n "  [*] Binary:	"
+	echo -n "$1" | xxd -b | awk '{for(i=2;i<=NF-1;i++) printf $i " ";}'
+	echo
+	echo
+}
+# Function for encoding to hex
+function ascii_to_hex(){
+	echo -n "  [*] Hex:	"
+	echo -n "$1" | xxd | awk '{for(i=2;i<=NF-1;i++) printf $i " ";}'
+	echo
+	echo
+}
+# Function for encoding to base32
+function ascii_to_b32(){
+	echo -n "  [*] Base32:	"
+	echo -n "$1" | base32
+	echo
+}
+# Function for encoding to base64
+function ascii_to_b64(){
+	echo -n "  [*] Base64:	"
+	echo -n "$1" | base64
+	echo
+}
+# Function for encoding to base58
+function ascii_to_b58(){
+	echo -n "  [*] Base58:	"
+	echo -n "$1" | base58
+	echo
+}
+# Function for hashing to md5
+function dump_to_md5(){
+	echo -n "  [*] MD5:	"
+	echo -n "$1" | md5sum | awk '{print $1}'
+	echo
+}
+# Function for hashing to sha1
+function dump_to_sha1(){
+	echo -n "  [*] SHA1:	"
+	echo -n "$1" | sha1sum | awk '{print $1}'
+	echo
+}
+# Function for hashing to sha224
+function dump_to_sha224(){
+	echo -n "  [*] SHA224:	"
+	echo -n "$1" | sha224sum | awk '{print $1}'
+	echo
+}
+# Function for hashing to sha256
+function dump_to_sha256(){
+	echo -n "  [*] SHA256:	"
+	echo -n "$1" | sha256sum | awk '{print $1}'
+	echo
+}
+# Function for hashing to sha384
+function dump_to_sha384(){
+	echo -n "  [*] SHA384:	"
+	echo -n "$1" | sha384sum | awk '{print $1}'
+	echo
+}
+# Function for hashing to sha512
+function dump_to_sha512(){
+	echo -n "  [*] SHA512:	"
+	echo -n "$1" | sha512sum | awk '{print $1}'
+	echo
+}
+# Checks for help tag
+if [[ " $@ " == *" --help "* ]]; then
+    help
+    exit 0
+fi
+#Parse every argument with its value
+while getopts "d:e:f:i:h:" opt; do
+  case $opt in
+    f)
+      	file="$OPTARG"
+      	;;
+    i)
+		input="$OPTARG"
+		;;
+    d)
+		decode="$OPTARG"
+		;;
+    e)
+		encode="$OPTARG"
+		;;
+	h)
+		hash="$OPTARG"
+		;;
+    \?)
+		echo "Invalid option"
+		echo "--help for more information"
+		exit 1
+		;;
+  esac
+done
+
+# Chacks if input is given
+if [[ -z $file && -z $input ]]; then
+	echo "Select input or file with (-i or -f)"
+	exit 1;
+fi
+# Checks if mode is selected
+if [[ -z $decode && -z $encode && -z $hash ]]; then
+	echo "Select encode or decode or hash with (-e or -d or -h)"
+	exit 1;
+fi
+#Check if xxd is installed
+if ! command -v xxd >/dev/null 2>&1; then
+	echo "Installing xxd..."
+	echo
+	sudo apt update >/dev/null 2>&1
+	sudo apt install xxd -y >/dev/null 2>&1
+	if [[ $? -ne 0 ]];then
+		echo "Failed to install xxd"
+	fi
+fi
+# Copies the input to temp variable
+if [[ -n $file ]]; then
+	temp="$(cat "$file")"
+elif [[ -n $input ]]; then
+	temp="$(echo -n "$input")"
+fi
+
+# Checks if decode mode is selected
+if [[ -n $decode ]];then
+	echo "[+] Decoded from:"
+	echo
+	case $decode in 
+		bin)
+			bin_to_ascii "$temp"
+			;;
+		hex)
+			hex_to_ascii "$temp"
+			;;
+		b32)
+			b32_to_ascii "$temp"
+			;;
+		b64)
+			b64_to_ascii "$temp"
+			;;
+		b58)
+			b58_to_ascii "$temp"
+			;;
+		all)
+			bin_to_ascii "$temp"
+			hex_to_ascii "$temp"
+			b32_to_ascii "$temp"
+			b64_to_ascii "$temp"
+			b58_to_ascii "$temp"
+			;;
+		*)
+			echo "Invalid mode"
+			echo "--help for more information"
+			exit 1
+			;;
+	esac
+# Checks if encode mode is selected
+elif [[ -n $encode ]];then
+	echo "[+] Encoded in:"
+	echo
+	case $encode in 
+		bin)
+			ascii_to_bin "$temp"
+			;;
+		hex)
+			ascii_to_hex "$temp"
+			;;
+		b32)
+			ascii_to_b32 "$temp"
+			;;
+		b64)
+			ascii_to_b64 "$temp"
+			;;
+		b58)
+			ascii_to_b58 "$temp"
+			;;
+		all)
+			ascii_to_bin "$temp"
+			ascii_to_hex "$temp"
+			ascii_to_b32 "$temp"
+			ascii_to_b64 "$temp"
+			ascii_to_b58 "$temp"
+			;;
+		*)
+			echo "Invalid mode"
+			echo "--help for more information"
+			exit 1
+			;;
+	esac
+# Checks if hash mode is selected
+elif [[ -n $hash ]];then
+	echo "[+] Hashed in:"
+	echo
+	case $hash in 
+		md5)
+			dump_to_md5 "$temp"
+			;;
+		sha1)
+			dump_to_sha1 "$temp"
+			;;
+		s224)
+			dump_to_sha224 "$temp"
+			;;
+		s256)
+			dump_to_sha256 "$temp"
+			;;
+		s384)
+			dump_to_sha384 "$temp"
+			;;
+		s512)
+			dump_to_sha384 "$temp"
+			;;
+		all)
+			dump_to_md5 "$temp"
+			dump_to_sha1 "$temp"
+			dump_to_sha224 "$temp"
+			dump_to_sha256 "$temp"
+			dump_to_sha384 "$temp"
+			dump_to_sha512 "$temp"
+			;;
+		*)
+			echo "Invalid mode"
+			echo "--help for more information"
+			exit 1
+			;;
+	esac
+fi

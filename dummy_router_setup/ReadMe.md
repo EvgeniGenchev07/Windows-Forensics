@@ -66,17 +66,17 @@ Restores:
 
 ## Make script executable
 ```bash
-chmod +x configurator.sh
+chmod +x marouter
 ```
 ## Install dependencies
 ```bash
-./configurator.sh install
+./marouter install
 ```
 ## Start the service
 ```bash
-./configurator.sh start
+./marouter start
 ```
 ## Restore to default settings and stop the service
 ```bash
-./configurator.sh stop
+./marouter stop
 ```
